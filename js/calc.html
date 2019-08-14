@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>calc</title>
+</head>
+
+<body>
+  <script>
+    const EOF = Symbol('EOF');
+    var token = [];
+    var tokens = [];
+    const start = char => {
+      if (char === '1' ||
+        char === '2' ||
+        char === '3' ||
+        char === '4' ||
+        char === '5' ||
+        char === '6' ||
+        char === '7' ||
+        char === '8' ||
+        char === '9' ||
+        char === '0' ||
+        char === '.' 
+      ) {
+        token.push(char);
+        return inNumber;
+      }
+      if (char === '+' ||
+        char === '-' ||
+        char === '*' ||
+        char === '/' ||
+        char === '(' ||
+        char === ')' 
+      ) {
+        emmitToken(char, char);
+        return start
+      }
+      if (char === ' ') {
+        return start;
+      }
+      if (char === '\r' ||
+        char === '\n'
+      ) {
+        return start;
+      }
+      if (char === EOF){
+        emmitToken("EOF", EOF);
+        return start
+      }
+    }
+    const inNumber = char => {
+      if (char === '1' ||
+        char === '2' ||
+        char === '3' ||
+        char === '4' ||
+        char === '5' ||
+        char === '6' ||
+        char === '7' ||
+        char === '8' ||
+        char === '9' ||
+        char === '0'
+      ) {
+        token.push(char);
+        return inNumber;
+      } else if (char === '.') {
+        token.push(char);
+        return inTrueNumber;
+      } else {
+        if (token.length === 1  && token[0] === ".") throw new Error("不能单独出现`.`");
+        emmitToken("Number", token.join(""));
+        token = [];
+        return start(char); // put back char
+      }
+    }
+
+    const inTrueNumber = char => {
+      if (char === '1' ||
+        char === '2' ||
+        char === '3' ||
+        char === '4' ||
+        char === '5' ||
+        char === '6' ||
+        char === '7' ||
+        char === '8' ||
+        char === '9' ||
+        char === '0'
+      ) {
+        token.push(char);
+        return inNumber;
+      } else {
+        emmitToken("Number", token.join(""));
+        token = [];
+        return start(char); // put back char
+      }
+    }
+
+    function emmitToken(type, value) {
+      console.log(value);
+      tokens.push({
+        type,
+        value,
+      })
+    }
+
+    // var input = "1 / 2 * 3 + 4 / 5 * 6 - 7 * 8 / 9 * 0 "
+    // var input = "1 + 1 * - - 1 + - - 1"
+    var input = "1 + 2 * (3 + 4)"
+
+    var state = start;
+
+    for (var c of input.split(''))
+      state = state(c);
+
+    state(EOF)
+
+    console.log(tokens);
+    const AST = Expression(tokens);
+    console.log(AST);
+    const answer = evaluate(AST);
+    console.log(answer);
+
+    // function expression(tokens){
+    //   return _expression(tokens.reverse());
+    // }
+    function Node(left=null,operator=null,right=null){
+      return {
+        left,
+        operator,
+        right,
+        type:"Node",
+      }
+    }
+    
+    function Expression(tokens){
+      // let expression = null;
+      // let operator = null;
+      // let turnOver = false;
+      const PLACEHOLDER = "PLACEHOLDER";
+      let stack = [Node()];
+      const operatorValue = {
+        "+" : 1,
+        "-" : 1,
+        "*" : 2,
+        "/" : 2,
+        "TURN_OVER" : 2,
+      }
+      tokens.forEach(token => {
+        console.log(token.value);
+        let top = stack[stack.length - 1];
+        console.log(top.left,top.operator,top.right);
+        
+        if (token.type === "EOF") return;
+        if (token.type === "(" ) {
+          if (top.left !== null && top.operator === null) throw new Error("not a function");
+          if (top.left === null && top.operator !== null) throw new Error("Unexpected token " + top.operator);
+          return stack.push(Node());
+        }
+        if (token.type === ")" ) {
+          if (stack.length <= 1) throw new Error("Unexpected token )");
+          if (top.left === null) throw new Error("Unexpected token )");
+          stack.pop();
+          let _token;
+          let _top = stack[stack.length - 1];
+          if (top.operator === null) _token = top.left;
+          if (top.operator !== null) _token = top;
+          if (_top.left === null && _top.operator === null && _top.right === null ) {
+            _top.left = _token;
+          } else if (_top.left !== null && _top.operator !== null && _top.right === null) {
+            _top.right = _token;
+          } else if (_top.left !== null && _top.operator !== null && _top.right !== null && _top.right.right === null) {
+            _top.right.right = _token;
+          }
+        }
+        
+        if (token.type === "*" || token.type === "/" || token.type === "+" || token.type === "-") {
+          if (top.left !== null &&  top.operator === null && top.right === null) {
+            top.operator = token.type;
+          } else  if (top.left !== null &&  top.operator !== null && top.right !== null) {
+            if (token.type === "-" && top.right.operator === "TURN_OVER") return top.right = null;
+            if (token.type === "-" && top.right.operator !== "TURN_OVER") return top.right = Node(Node(PLACEHOLDER,"TURN_OVER",top.right.left),top.right.operator);
+
+            if (operatorValue[token.type] > operatorValue[top.operator]){
+              top.right = Node(top.right,token.type);
+            } else {
+              top.left = Node(top.left,top.operator,top.right);
+              top.operator = token.type;
+              top.right = null;
+            }
+          } else if (top.left === null &&  top.operator === null && token.type === "-") {
+            top.operator = "TURN_OVER";
+            top.left = PLACEHOLDER;
+          } else if (top.left === PLACEHOLDER &&  top.operator === "TURN_OVER" && token.type === "-") {
+            top.operator = null;
+            top.left = null;
+          } else if (top.left !== null &&  top.operator !== null && token.type === "-" && top.right === null) {
+            top.right = Node(PLACEHOLDER,"TURN_OVER");
+          } else {
+            throw new Error("操作符顺序出错");
+          }
+        } else {
+          if (top.left === null && top.operator === null && top.right === null ) {
+            top.left = token;
+          } else if (top.left !== null && top.operator !== null && top.right === null) {
+            top.right = token;
+          } else if (top.left !== null && top.operator !== null && top.right !== null && top.right.right === null) {
+            top.right.right = token;
+          }
+        }
+      });
+      return stack[0];
+    }
+    
+    function evaluate(node){
+      const {left,right,operator,type,value} = node;
+      if (type === "Number") return Number(value);
+      if (operator === "+") return evaluate(left) + evaluate(right);
+      if (operator === "-") return evaluate(left) - evaluate(right);
+      if (operator === "*") return evaluate(left) * evaluate(right);
+      if (operator === "/") return evaluate(left) / evaluate(right);
+      if (operator === "TURN_OVER") return evaluate(right) * -1;
+    }
+  </script>
+</body>
+
+</html>

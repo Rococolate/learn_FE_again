@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>bubbles</title>
+  <style>
+    #stage{
+      position: relative;
+    }
+    #stage div{
+      width: 100px;
+      height: 100px;
+      border: 1px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top:0;
+      left:0;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="level1_1">
+      <div id="level1_1_1"></div>
+      <div id="level1_1_2"></div>
+    </div>
+    <div id="level1_2">
+      <div id="level1_2_1" style="z-index: 2"></div>
+      <div id="level1_2_2"></div>
+    </div>
+  </div>
+  <script>
+    const divs = Array.from(document.querySelectorAll("div"));
+    divs.forEach(div => {
+      console.log(div);
+      div.addEventListener("mousedown",e => {console.log(`capture:`,div.id)}, true);
+      div.addEventListener("mousedown",e => {console.log(`bubble:`,div.id)}, false);
+    });
+  </script>
+</body>
+</html>
