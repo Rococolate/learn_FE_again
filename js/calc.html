@@ -10,218 +10,376 @@
 
 <body>
   <script>
-    const EOF = Symbol('EOF');
-    var token = [];
-    var tokens = [];
-    const start = char => {
-      if (char === '1' ||
-        char === '2' ||
-        char === '3' ||
-        char === '4' ||
-        char === '5' ||
-        char === '6' ||
-        char === '7' ||
-        char === '8' ||
-        char === '9' ||
-        char === '0' ||
-        char === '.' 
-      ) {
-        token.push(char);
-        return inNumber;
+    function getTokens(input){
+      const EOF = Symbol('EOF');
+      var token = [];
+      var tokens = [];
+      const start = char => {
+        // 数字
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inInt;
+        }
+        // .
+        if (char === "."){
+          token.push(char);
+          return inFloat;
+        }
+        // 符号
+        if (["+","-","*","/","(",")",">","<"].includes(char)) {
+          emmitToken("Sign", char);
+          return start
+        }
+        // 空白字符
+        if ([" ","\r","\n"].includes(char)) {
+          return start;
+        }
+        // 介绍
+        if (char === EOF){
+          emmitToken("EOF", EOF);
+          return start
+        }
       }
-      if (char === '+' ||
-        char === '-' ||
-        char === '*' ||
-        char === '/' ||
-        char === '(' ||
-        char === ')' 
-      ) {
-        emmitToken(char, char);
-        return start
+
+      const inInt = char => {
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inInt;
+        } else if (char === '.') {
+          token.push(char);
+          return inFloat;
+        } else {
+          emmitToken("NUMBER", token.join(""));
+          token = [];
+          return start(char); // put back char
+        }
       }
-      if (char === ' ') {
-        return start;
+
+      const inFloat = char => {
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inFloat;
+        } else if (char === ".") {
+          throw new Error("不能出现`..`");
+        } else {
+          if (token.length === 1  && token[0] === ".") throw new Error("不能单独出现`.`");
+          emmitToken("NUMBER", token.join(""));
+          token = [];
+          return start(char); // put back char
+        }
       }
-      if (char === '\r' ||
-        char === '\n'
-      ) {
-        return start;
+
+      function emmitToken(type, value) {
+        // console.log(value);
+        tokens.push({
+          type,
+          value,
+        })
       }
-      if (char === EOF){
-        emmitToken("EOF", EOF);
-        return start
+
+      var state = start;
+
+      for (var c of input.split('')){
+        state = state(c);
       }
-    }
-    const inNumber = char => {
-      if (char === '1' ||
-        char === '2' ||
-        char === '3' ||
-        char === '4' ||
-        char === '5' ||
-        char === '6' ||
-        char === '7' ||
-        char === '8' ||
-        char === '9' ||
-        char === '0'
-      ) {
-        token.push(char);
-        return inNumber;
-      } else if (char === '.') {
-        token.push(char);
-        return inTrueNumber;
-      } else {
-        if (token.length === 1  && token[0] === ".") throw new Error("不能单独出现`.`");
-        emmitToken("Number", token.join(""));
-        token = [];
-        return start(char); // put back char
-      }
-    }
-
-    const inTrueNumber = char => {
-      if (char === '1' ||
-        char === '2' ||
-        char === '3' ||
-        char === '4' ||
-        char === '5' ||
-        char === '6' ||
-        char === '7' ||
-        char === '8' ||
-        char === '9' ||
-        char === '0'
-      ) {
-        token.push(char);
-        return inNumber;
-      } else {
-        emmitToken("Number", token.join(""));
-        token = [];
-        return start(char); // put back char
-      }
-    }
-
-    function emmitToken(type, value) {
-      console.log(value);
-      tokens.push({
-        type,
-        value,
-      })
-    }
-
-    // var input = "1 / 2 * 3 + 4 / 5 * 6 - 7 * 8 / 9 * 0 "
-    // var input = "1 + 1 * - - 1 + - - 1"
-    var input = "1 + 2 * (3 + 4)"
-
-    var state = start;
-
-    for (var c of input.split(''))
-      state = state(c);
-
-    state(EOF)
-
-    console.log(tokens);
-    const AST = Expression(tokens);
-    console.log(AST);
-    const answer = evaluate(AST);
-    console.log(answer);
-
-    // function expression(tokens){
-    //   return _expression(tokens.reverse());
-    // }
-    function Node(left=null,operator=null,right=null){
-      return {
-        left,
-        operator,
-        right,
-        type:"Node",
-      }
+      state(EOF);
+      return tokens;
+    } 
+    const inputList = [
+     "1.1+1",
+     "1 / 2 * 3 + 4 / 5 * 6 - 7 * 8 / 9 * 0 ",
+     "1 * 2 * 3 + 4 * 5 * 6",
+     "1 + 1 * - - 1 + - - 1",
+     "1 + 1 *  - - 1 ",
+     "(-(-1))",
+     "(-(-(-1)))",
+     "(1 + 2) * (3 - 4)",
+     "-(-(-(-1)))",
+    "(-1)",
+     "(((1)))",
+     "+ +  -1",
+     "1 + 1",
+     "1 + 2 * 3 ",
+     " - - 1",
+     "-(-1+2)*3",
+     "-(-1+-2)*3",
+     "(- - - -(1+-2))",
+     "- - - -(1+-(2))",
+    "(1+2)*3",
+    "(1+2)*-3",
+    "100 > 101 + - 1 / 2",
+    "100 > 101 - 1 / 2",
+    "1 * 2 + 3 > 4",
+    "1 + 2 > 3 * 4",
+    "1 > 2 + 3 * 4 + 5",
+    "1 > 2 + 3 * 4 < 5",
+    ]
+    
+    const answer = inputList.forEach(item => {
+      console.log("input:",item);
+      console.log("output:",getAnswer(item));
+      console.log("eval:",eval(item));
+    });
+    function getAnswer(input){
+      const tokens = getTokens(input);
+      // console.log(tokens);
+      const AST = Expression(tokens);
+      console.log(AST);
+      const answer = evaluate(AST);
+      // console.log(answer);
+      return answer;
     }
     
     function Expression(tokens){
-      // let expression = null;
-      // let operator = null;
-      // let turnOver = false;
-      const PLACEHOLDER = "PLACEHOLDER";
-      let stack = [Node()];
+      const stack = [RootNode()];
+      const tempStack = [];
       const operatorValue = {
-        "+" : 1,
-        "-" : 1,
-        "*" : 2,
-        "/" : 2,
-        "TURN_OVER" : 2,
+        "<" : 2,
+        ">" : 2,
+        "+" : 3,
+        "-" : 3,
+        "*" : 4,
+        "/" : 4,
+        "NEGATE" : 5, // 取负
+        "NUMBER" : 5, // 取正
+        "(" : 1,
+        "ROOT" : 0,
+        ")" : 6,
+        "ROOT_END" : 7,
+      }
+
+      let left = 0;
+
+      const opposite = {
+        "(" : ")" ,
+        "ROOT" : "ROOT_END" ,
+      }
+
+      function BiggerNode(){
+        return {
+          type:">",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function SmallerNode(){
+        return {
+          type:"<",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function AddNode(){
+        return {
+          type:"+",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function SubNode(){
+        return {
+          type:"-",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function MulNode(){
+        return {
+          type:"*",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function DivNode(){
+        return {
+          type:"/",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function NegNode(){
+        return {
+          type:"NEGATE",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function ParNode(){
+        return {
+          type:"(",
+        }
+      }
+
+      function RootNode(){
+        return {
+          type:"ROOT",
+        }
+      }
+
+      function NumberNode(){
+        return {
+          type:"NUMBER",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function CreateTypeNode(type){
+        if (type === "+") return AddNode;
+        if (type === "-") return SubNode;
+        if (type === "*") return MulNode;
+        if (type === "/") return DivNode;
+        if (type === ">") return BiggerNode;
+        if (type === "<") return SmallerNode;
+        if (type === "NEGATE") return NegNode;
+        if (type === "NUMBER") return NumberNode;
       }
       tokens.forEach(token => {
-        console.log(token.value);
         let top = stack[stack.length - 1];
-        console.log(top.left,top.operator,top.right);
+        // console.log(top);
+        // console.log(JSON.stringify(stack));
         
-        if (token.type === "EOF") return;
-        if (token.type === "(" ) {
-          if (top.left !== null && top.operator === null) throw new Error("not a function");
-          if (top.left === null && top.operator !== null) throw new Error("Unexpected token " + top.operator);
-          return stack.push(Node());
-        }
-        if (token.type === ")" ) {
-          if (stack.length <= 1) throw new Error("Unexpected token )");
-          if (top.left === null) throw new Error("Unexpected token )");
-          stack.pop();
-          let _token;
-          let _top = stack[stack.length - 1];
-          if (top.operator === null) _token = top.left;
-          if (top.operator !== null) _token = top;
-          if (_top.left === null && _top.operator === null && _top.right === null ) {
-            _top.left = _token;
-          } else if (_top.left !== null && _top.operator !== null && _top.right === null) {
-            _top.right = _token;
-          } else if (_top.left !== null && _top.operator !== null && _top.right !== null && _top.right.right === null) {
-            _top.right.right = _token;
-          }
-        }
-        
-        if (token.type === "*" || token.type === "/" || token.type === "+" || token.type === "-") {
-          if (top.left !== null &&  top.operator === null && top.right === null) {
-            top.operator = token.type;
-          } else  if (top.left !== null &&  top.operator !== null && top.right !== null) {
-            if (token.type === "-" && top.right.operator === "TURN_OVER") return top.right = null;
-            if (token.type === "-" && top.right.operator !== "TURN_OVER") return top.right = Node(Node(PLACEHOLDER,"TURN_OVER",top.right.left),top.right.operator);
+        if (token.type === "EOF") {
+          // ( 1 + 2 EOF
+          if (left > 0) throw new Error("还有没有闭合的括号");
+          // EOF
+          return remove("ROOT");
+        };
 
-            if (operatorValue[token.type] > operatorValue[top.operator]){
-              top.right = Node(top.right,token.type);
-            } else {
-              top.left = Node(top.left,top.operator,top.right);
-              top.operator = token.type;
-              top.right = null;
-            }
-          } else if (top.left === null &&  top.operator === null && token.type === "-") {
-            top.operator = "TURN_OVER";
-            top.left = PLACEHOLDER;
-          } else if (top.left === PLACEHOLDER &&  top.operator === "TURN_OVER" && token.type === "-") {
-            top.operator = null;
-            top.left = null;
-          } else if (top.left !== null &&  top.operator !== null && token.type === "-" && top.right === null) {
-            top.right = Node(PLACEHOLDER,"TURN_OVER");
-          } else {
-            throw new Error("操作符顺序出错");
+        if (token.value === "(" ) {
+          // 1(
+          // 1 + 1 (
+          if (isFullNode(top)) throw new Error("not a function");
+          left ++;
+          // (
+          return stack.push(ParNode());
+        }
+
+        if (token.value === ")" ) {
+          //  ())
+          if (left <= 0) throw new Error("Unexpected token )");
+          left --;
+          // ()
+          if (isNoChildrenNode(top)) throw new Error("Unexpected token )");
+          // (1+)
+          if (isNotFullNode(top)) throw new Error("Unexpected token )");
+          return remove("(");
+        }
+
+        if (token.type === "Sign") {
+          // 后置符号
+          if (isFullNode(top)) {
+            if (operatorValue[token.value] > operatorValue[top.type]){
+                // 1 + 2 * 
+                return rob(token.value,top.children.pop());
+              } else {
+                //  1 +
+                //  1 + 2 + 
+                link(token.value);
+                return retire(token.value);
+              }
           }
-        } else {
-          if (top.left === null && top.operator === null && top.right === null ) {
-            top.left = token;
-          } else if (top.left !== null && top.operator !== null && top.right === null) {
-            top.right = token;
-          } else if (top.left !== null && top.operator !== null && top.right !== null && top.right.right === null) {
-            top.right.right = token;
+          // 前置符号
+          if (
+            (isNoChildrenNode(top)) || // (-
+            (isNotFullNode(top)) // 1 + -
+          ){
+            if (token.value === "-") return stack.push(CreateTypeNode("NEGATE")()); // 取负公用符号 - 
+            if (token.value === "+") return ; // + 号静默
+            throw new Error(token.value + "符号不能前置");
           }
         }
+
+        if (token.type === "NUMBER") {
+          //  1 1 
+          //  1 + 1 1
+          if (isFullNode(top)) throw new Error("数字前一项不能是满项")
+          const number = CreateTypeNode(token.type)(token.value);
+          if (isNotFullNode(top)){
+            return top.children.push(number);
+          } else {
+            return stack.push(number);
+          }
+        }
+
+        function rob(type,child){
+          stack.push(CreateTypeNode(type)(child));
+        }
+
+        function retire(type){
+          stack.push(CreateTypeNode(type)(stack.pop()));
+        }
+
+        function link(type){
+          const value = operatorValue[type];
+          // console.log(stack[stack.length -2].type,stack[stack.length -1].type,type);
+          // console.log(typeValue(stack[stack.length -2]),typeValue(stack[stack.length -1]),value);
+          while(isFullNode(stack[stack.length -1]) &&  isNotFullNode(stack[stack.length - 2]) && (value <= typeValue(stack[stack.length -1])) && (value <= typeValue(stack[stack.length -2])) ) {
+            // console.log(value);
+            stack[stack.length - 2].children.push(stack.pop());
+          }
+        }
+
+        function typeValue(node){
+          if (node === undefined) throw new Error("node is undefined");
+          return operatorValue[node.type];
+        }
+
+        function remove(type){
+          link(type);
+          //  找到最近的( 其余push到tempStack
+          while(stack.length > 0 && !(stack[stack.length - 1].type === type && !stack[stack.length - 1].children)){
+            tempStack.push(stack.pop());
+          }
+          // 修改最近的( 
+          const top = stack[stack.length - 1];
+          if (top.type === type){
+            top.type = opposite[type];
+            top.children = [];
+            // tempStack的Node压给(
+            while(tempStack.length > 0){
+              top.children.push(tempStack.pop());
+            }
+            top.maxChildren = top.children.length;
+          } 
+        }
+
+        function isFullNode(node){
+          return node && node.children && node.children.length >= node.maxChildren;
+        }
+
+        function isNotFullNode(node){
+          return node && node.children && node.children.length < node.maxChildren;
+        }
+
+        function isNoChildrenNode(node){
+          return !(node && node.children);
+        }
+
       });
       return stack[0];
     }
-    
+
     function evaluate(node){
-      const {left,right,operator,type,value} = node;
-      if (type === "Number") return Number(value);
-      if (operator === "+") return evaluate(left) + evaluate(right);
-      if (operator === "-") return evaluate(left) - evaluate(right);
-      if (operator === "*") return evaluate(left) * evaluate(right);
-      if (operator === "/") return evaluate(left) / evaluate(right);
-      if (operator === "TURN_OVER") return evaluate(right) * -1;
+      if (node === null) return null;
+      const {type,children} = node;
+      if (type === "NUMBER") return Number(children[0]);
+      if (type === "+") return evaluate(children[0]) + evaluate(children[1]);
+      if (type === "-") return evaluate(children[0]) - evaluate(children[1]);
+      if (type === "*") return evaluate(children[0]) * evaluate(children[1]);
+      if (type === "/") return evaluate(children[0]) / evaluate(children[1]);
+      if (type === ">") return evaluate(children[0]) > evaluate(children[1]);
+      if (type === "<") return evaluate(children[0]) < evaluate(children[1]);
+      if (type === ")") return evaluate(children[0]);
+      if (type === "ROOT_END") return evaluate(children[0]);
+      if (type === "NEGATE") return evaluate(children[0]) * -1;
     }
   </script>
 </body>

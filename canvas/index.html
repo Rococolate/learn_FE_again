@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>canvas</title>
+  <style>
+    html,body{
+      margin:0;
+      padding:0;
+      width: 100%;
+      height: 100%;
+    }
+    #img{
+      width: 100%;
+      height: 100%;
+      background-position: 0 0; 
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+  </style>
+</head>
+<body>
+  <div id="img"></div>
+  <script>
+    // 镂空图
+  var stageWidth = document.documentElement.clientWidth;
+  var stageHeight = document.documentElement.clientHeight;
+  var canvas = document.createElement('canvas');
+  canvas.width = stageWidth;
+  canvas.height = stageHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'xor';
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, stageWidth, stageHeight);
+  ctx.fillStyle = 'red';
+  drawRoundRect(
+    ctx,
+    stageWidth / 2,
+    stageHeight / 2,
+    60,
+    120,
+    20,
+  );
+  ctx.fill();
+  const url = canvas.toDataURL('image/png');
+  img.style.backgroundImage = `url(${url})`;
+
+  // 画圆角矩形
+function drawRoundRect(ctx, x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+  </script>
+</body>
+</html>

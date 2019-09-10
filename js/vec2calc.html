@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>calc</title>
+</head>
+
+<body>
+  <script>
+    class Vector2d{
+      constructor(vx=1,vy=1){
+        this.vx = vx;
+        this.vy = vy;
+      }
+      //获取向量长度
+      static length(vec){
+        if (!Vector2d.is(vec)) return false;
+        return Math.sqrt(vec.vx * vec.vx + vec.vy * vec.vy);
+      }
+      //获取向量长度的平方
+      static lengthSquared(vec){
+        if (!Vector2d.is(vec)) return false;
+        return vec.vx * vec.vx + vec.vy * vec.vy;
+      }
+      //scale方法可以让我们来放大或缩小向量
+      static scale(vec,scale){
+        if (!Vector2d.is(vec)) return false;
+        const vx = vec.vx * scale;
+        const vy = vec.vy * scale;
+        return new Vector2d(vx,vy);
+      } 
+
+      //向量的加法运算
+      static add(vec,vec2){
+        if (!Vector2d.is(vec) || !Vector2d.is(vec2)) return false;
+        const vx = vec.vx + vec2.vx;
+        const vy = vec.vy + vec2.vy;
+        return new Vector2d(vx,vy);
+      }
+      
+      //向量的减法运算
+      static sub(vec,vec2){
+        if (!Vector2d.is(vec) || !Vector2d.is(vec2)) return false;
+        const vx = vec.vx - vec2.vx;
+        const vy = vec.vy - vec2.vy;
+        return new Vector2d(vx,vy);
+      }
+
+      //方向取反
+      static negate(vec){
+        if (!Vector2d.is(vec)) return false;
+        const vx = -vec.vx;
+        const vy = -vec.vy;
+        return new Vector2d(vx,vy);
+      }
+
+      //将向量转化为一个单位向量
+      static normalize(vec){
+        if (!Vector2d.is(vec)) return false;
+        const len = Math.sqrt(vec.vx * vec.vx + vec.vy * vec.vy);
+        let vx = 0;
+        let vy = 0;
+        if(len){
+          vx =  vec.vx / len;
+          vy =  vec.vy / len;
+        }
+        return new Vector2d(vx,vy);
+      }
+
+      //向量的旋转 https://en.wikipedia.org/wiki/Rotation_matrix
+      static rotate(vec,angle){
+        if (!Vector2d.is(vec)) return false;
+        const cosVal = Math.cos(angle);
+        const sinVal = Math.sin(angle);
+        const _vx = vec.vx * cosVal - vec.vy * sinVal;
+        const _vy = vec.vx * sinVal + vec.vy * cosVal;
+        const vx = Math.abs(_vx) < Number.EPSILON ? 0 : _vx;
+        const vy = Math.abs(_vy) < Number.EPSILON ? 0 : _vy;
+        return new Vector2d(vx,vy);
+      }
+
+      //向量的数量积
+      static dot(vec,vec2){
+        if (!Vector2d.is(vec)) return false;
+        if (!Vector2d.is(vec2)) return false;
+        return vec.vx * vec2.vx + vec.vy * vec2.vy;
+      }
+
+      static is(vec){
+        const boolean = vec instanceof Vector2d;
+        return boolean;
+      }
+    } 
+    // 定义 向量运算
+    // [1,2] 向量
+    // [1,2] + [3,4] = [1+3,2+4] 加法
+    // [1,2] - [3,4] = [1-3,2-4] 减法
+    // [1,2] * 3 = [1*3,2*3] 向量scale
+    // [1,2] / 3 = [1/3,2/3] 向量scale
+    // [1,2] @rot 90 = [x,y] 向量旋转
+    // [1,2] @dot [3,4]  = 1*3+2*4 向量点乘
+    // @len[1,2]  = √(1*1+2*2)  向量模
+    // @lens[1,2]  = 1*1+2*2  向量模平方
+
+    function getTokens(input){
+      const EOF = Symbol('EOF');
+      var token = [];
+      var tokens = [];
+      const start = char => {
+        // 数字
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inInt;
+        }
+        // .
+        if (char === "."){
+          token.push(char);
+          return inFloat;
+        }
+        // 符号
+        if (["+","-","*","/","(",")","[","]",",","<",">"].includes(char)) {
+          emmitToken("Sign", char);
+          return start
+        }
+        // 空白字符
+        if ([" ","\r","\n"].includes(char)) {
+          return start;
+        }
+        // 介绍
+        if (char === EOF){
+          emmitToken("EOF", EOF);
+          return start
+        }
+        if (char === "@"){
+          token.push(char);
+          return sign;
+        }
+      }
+
+      const sign = char => {
+        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").includes(char)) {
+          token.push(char);
+          return sign;
+        } else {
+          emmitToken("Sign", token.join(""));
+          token = [];
+          return start(char); // put back char
+        }
+      }
+
+      const inInt = char => {
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inInt;
+        } else if (char === '.') {
+          token.push(char);
+          return inFloat;
+        } else {
+          emmitToken("NUMBER", token.join(""));
+          token = [];
+          return start(char); // put back char
+        }
+      }
+
+      const inFloat = char => {
+        if (["0","1","2","3","4","5","6","7","8","9"].includes(char)) {
+          token.push(char);
+          return inFloat;
+        } else if (char === ".") {
+          throw new Error("不能出现`..`");
+        } else {
+          if (token.length === 1  && token[0] === ".") throw new Error("不能单独出现`.`");
+          emmitToken("NUMBER", token.join(""));
+          token = [];
+          return start(char); // put back char
+        }
+      }
+
+      function emmitToken(type, value) {
+        // console.log(value);
+        tokens.push({
+          type,
+          value,
+        })
+      }
+
+      var state = start;
+
+      for (var c of input.split('')){
+        state = state(c);
+      }
+      state(EOF);
+      return tokens;
+    } 
+    const inputList = [
+     "1.1+1",
+     "1 / 2 * 3 + 4 / 5 * 6 - 7 * 8 / 9 * 0 ",
+     "1 * 2 * 3 + 4 * 5 * 6",
+     "1 + 1 * - - 1 + - - 1",
+     "1 + 1 *  - - 1 ",
+     "(-(-1))",
+     "(-(-(-1)))",
+     "-(-(-(-1)))",
+    "(-1)",
+    "(1 + 2) * (3 - 4)",
+     "(((1)))",
+     "+ +  -1",
+     "1 + 1",
+     "1 + 2 * 3 ",
+     " - - 1",
+     "-(-1+2)*3",
+     "-(-1+-2)*3",
+     "(- - - -(1+-2))",
+     "- - - -(1+-(2))",
+    "(1+2)*3",
+    "(1+2)*-3",
+    "100 > 101 + - 1 / 2",
+    "100 > 101 - 1 / 2",
+    "1 * 2 + 3 > 4",
+    "1 + 2 > 3 * 4",
+    "1 > 2 + 3 * 4 + 5",
+    "1 > 2 + 3 * 4 < 5",
+    // "[1,2]",
+    // "[1,2] @dot [3,4]",
+    // "[1+1,2+2]",
+    // "[1,2] + [3,4]",
+    // "[1,0] @rot - 90 @deg",
+    // "-@lens[3,4] * 5",
+    ]
+    
+    const answer = inputList.forEach(item => {
+      console.log("input:",item);
+      console.log("output:",getAnswer(item));
+      console.log("eval:",eval(item));
+    });
+    function getAnswer(input){
+      const tokens = getTokens(input);
+      console.log(tokens);
+      const AST = Expression(tokens);
+      console.log(AST);
+      const answer = evaluate(AST);
+      // console.log(answer);
+      return answer;
+    }
+    
+    function Expression(tokens){
+      const stack = [RootNode()];
+      const tempStack = [];
+      const operatorValue = {
+        "ROOT" : 0, 
+        "(" : 1,
+        "[" : 1,
+        "@dot" : 2, 
+        "<" : 3,
+        ">" : 3,
+        "+" : 4,
+        "-" : 4,
+        "*" : 5,
+        "/" : 5,
+        "@rot" : 5,
+        "@len" : 6, // 取模
+        "@lens" : 6, // 取模平方
+        "NEGATE" : 6, // 取负
+        "@deg" : 7,
+        "NUMBER" : 8, // 取正
+        ")" : 9,
+        "]" : 9,
+        "ROOT_END" : 10,
+      }
+
+      const opposite = {
+        "(" : ")" ,
+        "[" : "]" ,
+        "ROOT" : "ROOT_END" ,
+      }
+
+      let ParNodeSize = 0;
+      let VecNodeSize = 0;
+
+      function RootNode(){
+        return {
+          type:"ROOT",
+        }
+      }
+
+      function BiggerNode(){
+        return {
+          type:">",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function SmallerNode(){
+        return {
+          type:"<",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function AddNode(){
+        return {
+          type:"+",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function SubNode(){
+        return {
+          type:"-",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function MulNode(){
+        return {
+          type:"*",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function DivNode(){
+        return {
+          type:"/",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function DotNode(){
+        return {
+          type:"@dot",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function RotNode(){
+        return {
+          type:"@rot",
+          children:[...arguments],
+          maxChildren:2,
+        }
+      }
+
+      function NegNode(){
+        return {
+          type:"NEGATE",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function LenNode(){
+        return {
+          type:"@len",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function LensNode(){
+        return {
+          type:"@lens",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function ParNode(){
+        return {
+          type:"(",
+        }
+      }
+
+      function NumberNode(){
+        return {
+          type:"NUMBER",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function DegNode(){
+        return {
+          type:"@deg",
+          children:[...arguments],
+          maxChildren:1,
+        }
+      }
+
+      function VecNode(){
+        return {
+          type:"[",
+        }
+      }
+
+      function WallNode(){
+        return {
+          type:","
+        }
+      }
+      
+      function CreateTypeNode(type){
+        if (type === "+") return AddNode;
+        if (type === "-") return SubNode;
+        if (type === "*") return MulNode;
+        if (type === "/") return DivNode;
+        if (type === ">") return BiggerNode;
+        if (type === "<") return SmallerNode;
+        if (type === "@dot") return DotNode;
+        if (type === "@rot") return RotNode;
+        if (type === "@len") return LenNode;
+        if (type === "@lens") return LensNode;
+        if (type === "NEGATE") return NegNode;
+        if (type === "NUMBER") return NumberNode;
+        if (type === "@deg") return DegNode;
+      }
+      tokens.forEach(token => {
+        let top = stack[stack.length - 1];
+        // console.log(token);
+        // console.log(top);
+        // console.log(JSON.stringify(stack));
+        
+        if (token.type === "EOF") {
+          // ( 1 + 2 EOF
+          if (ParNodeSize > 0) throw new Error("还有没有闭合的(");
+          if (VecNodeSize > 0) throw new Error("还有没有闭合的[");
+          // EOF
+          return remove("ROOT");
+        };
+
+        if (token.value === "[" ) {
+          // 1[
+          // 1 + 1 [
+          if (isFullNode(top)) throw new Error("非顶端[前面不能有满项");
+          VecNodeSize ++;
+          return stack.push(VecNode());
+        }
+
+        if (token.value === "," ) {
+          // ,
+          // ,,
+          // (,
+          // [,
+          if (isNoChildrenNode(top)) throw new Error(",不能接在空符后面");
+          // [ 1 + ,
+          if (isNotFullNode(top)) throw new Error(",不能接在非满项后面");
+          link("[")
+          return stack.push(WallNode());
+        }
+
+        if (token.value === "]" ) {
+          // []]
+          if (VecNodeSize <= 0) throw new Error("缺少匹配的[");
+          // [1+]
+          if (isNotFullNode(top)) throw new Error("]前不能有非满项");
+          VecNodeSize --;
+          return remove("[");
+        }
+
+        if (token.value === "(" ) {
+          // 1(
+          // 1 + 1 (
+          if (isFullNode(top)) throw new Error("not a function");
+          ParNodeSize ++;
+          // (
+          return stack.push(ParNode());
+        }
+
+        if (token.value === ")" ) {
+          //  ())
+          if (ParNodeSize <= 0) throw new Error("Unexpected token )");
+          ParNodeSize --;
+          // ()
+          if (isNoChildrenNode(top)) throw new Error("Unexpected token )");
+          // (1+)
+          if (isNotFullNode(top)) throw new Error("Unexpected token )");
+          return remove("(");
+        }
+
+        
+        if (token.type === "Sign") {
+          // 后置符号
+          if (isFullNode(top)) {
+            if (token.value === "@len") throw new Error(token.value + "符号是前置符");
+            if (token.value === "@lens") throw new Error(token.value + "符号是前置符");
+            if (operatorValue[token.value] > operatorValue[top.type]){
+                // 1 + 2 * 
+                // console.log("rob");
+                return rob(token.value,top.children.pop());
+              } else {
+                //  1 +
+                //  1 + 2 + 
+                link(token.value);
+                return retire(token.value);
+              }
+          }
+
+          // 前置符号
+          if (
+            (isNoChildrenNode(top)) || // (-
+            (isNotFullNode(top)) // 1 + -
+          ){
+            if (token.value === "-") return stack.push(CreateTypeNode("NEGATE")()); // 取负公用符号 - 
+            if (token.value === "@len") return stack.push(CreateTypeNode("@len")());
+            if (token.value === "@lens") return stack.push(CreateTypeNode("@lens")());
+            if (token.value === "+") return ; // + 号静默
+            throw new Error(token.value + "符号不能前置");
+          }
+          
+        }
+
+        if (token.type === "NUMBER") {
+          //  1 1 
+          //  1 + 1 1
+          if (isFullNode(top)) throw new Error("数字前一项不能是满项")
+          const number = CreateTypeNode(token.type)(token.value);
+          if (isNotFullNode(top)){
+            return top.children.push(number);
+          } else {
+            return stack.push(number);
+          }
+        }
+
+        function rob(type,child){
+          stack.push(CreateTypeNode(type)(child));
+        }
+
+        function retire(type){
+          stack.push(CreateTypeNode(type)(stack.pop()));
+        }
+
+        function link(type){
+          const value = operatorValue[type];
+          // console.log(stack[stack.length -2].type,stack[stack.length -1].type,type);
+          // console.log(typeValue(stack[stack.length -2]),typeValue(stack[stack.length -1]),value);
+          while(isFullNode(stack[stack.length -1]) &&  isNotFullNode(stack[stack.length - 2]) && (value <= typeValue(stack[stack.length -1])) && (value <= typeValue(stack[stack.length -2])) ) {
+            // console.log(value);
+            stack[stack.length - 2].children.push(stack.pop());
+          }
+        }
+
+        function typeValue(node){
+          if (node === undefined) throw new Error("node is undefined");
+          return operatorValue[node.type];
+        }
+
+        function remove(type){
+          link(type);
+          //  找到最近的( 其余push到tempStack
+          while(stack.length > 0 && !(stack[stack.length - 1].type === type && !stack[stack.length - 1].children)){
+            tempStack.push(stack.pop());
+          }
+          // 修改最近的( 
+          const top = stack[stack.length - 1];
+          if (top.type === type){
+            top.type = opposite[type];
+            top.children = [];
+            // tempStack的Node压给(
+            while(tempStack.length > 0){
+              top.children.push(tempStack.pop());
+            }
+            top.maxChildren = top.children.length;
+          } 
+        }
+
+        function isFullNode(node){
+          return node && node.children && node.children.length >= node.maxChildren;
+        }
+
+        function isNotFullNode(node){
+          return node && node.children && node.children.length < node.maxChildren;
+        }
+
+        function isNoChildrenNode(node){
+          return !(node && node.children);
+        }
+
+      });
+      return stack[0];
+    }
+
+    function evaluate(node){
+      if (node === null) return null;
+      if (node === undefined) return null;
+      const {type,children} = node;
+
+      if (type === "NUMBER") return Number(children[0]);
+
+      if (type === "ROOT_END") return evaluate(children[0]);
+
+      if (type === ")") return evaluate(children[0]);
+
+      if (type === "]") {
+        const notWall = children.filter(item => item.type !== ",");
+        const a = evaluate(notWall[0]);
+        const b = evaluate(notWall[1]);
+        const isNumA = typeof a === "number";
+        const isNumB = typeof b === "number";
+        if (isNumA && isNumB) {
+          return new Vector2d(a,b);
+        } else {
+          throw new Error("只有两个数量才能生成向量");
+        }
+      }
+
+      if (type === "+") {
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        if (Vector2d.is(a) && Vector2d.is(b)){
+          return Vector2d.add(a,b);
+        } else {
+          return a + b;
+        }
+      }
+      if (type === "-") {
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        if (Vector2d.is(a) && Vector2d.is(b)){
+          return Vector2d.sub(a,b);
+        } else {
+          return a - b;
+        }
+      }
+
+      if (type === ">" || type === "<") {
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        const isVecA = Vector2d.is(a);
+        const isVecB = Vector2d.is(b);
+        const isNumA = typeof a === "number";
+        const isNumB = typeof b === "number";
+        if(isVecA && isNumB) {
+          throw new Error("向量与数字不能比较");
+        } else if (isVecB && isNumA) {
+          throw new Error("向量与数字不能比较");
+        } else if (isVecB && isVecA) {
+          throw new Error("向量与向量不能比较");
+        } else {
+          if (type === ">") return a > b;
+          if (type === "<") return a < b;
+        }
+      }
+
+      if (type === "*" || type === "/") {
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        const isVecA = Vector2d.is(a);
+        const isVecB = Vector2d.is(b);
+        const isNumA = typeof a === "number";
+        const isNumB = typeof b === "number";
+        if ( isNumA && isNumB ){
+          if (type === "*") return a * b;
+          if (type === "/") return a / b;
+        } else if(isVecA && isNumB) {
+          if (type === "*") return Vector2d.scale(a,b);
+          if (type === "/") return Vector2d.scale(a,1/b);
+        } else if (isVecB && isNumA) {
+          if (type === "*") return Vector2d.scale(b,a);
+          if (type === "/") return Vector2d.scale(b,1/a);
+        } else {
+          throw new Error("两个向量不能相乘，请用@dot");
+        }
+      }
+
+      if (type === "NEGATE") {
+        const a = evaluate(children[0]);
+        if (Vector2d.is(a)){
+          return Vector2d.scale(a,-1);
+        } else {
+          return a * -1;
+        }
+      }
+
+      if (type === "@dot"){
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        const isVecA = Vector2d.is(a);
+        const isVecB = Vector2d.is(b);
+        if (isVecA && isVecB) {
+          return Vector2d.dot(a,b);
+        } else {
+          throw new Error("只有向量和向量能点乘");
+        }
+      }
+
+      if (type === "@rot"){
+        const a = evaluate(children[0]);
+        const b = evaluate(children[1]);
+        const isVecA = Vector2d.is(a);
+        const isVecB = Vector2d.is(b);
+        const isNumA = typeof a === "number";
+        const isNumB = typeof b === "number";
+        if (isVecA && isNumB) {
+          return Vector2d.rotate(a,b);
+        } else if (isVecB && isNumA) {
+          return Vector2d.rotate(b,a);
+        } else {
+          throw new Error("只有向量和数量能旋转");
+        }
+      }
+
+      if (type === "@deg"){
+        const a = evaluate(children[0]);
+        const isNumA = typeof a === "number";
+        if (isNumA){
+          return a / 180 * Math.PI;
+        } else {
+          throw new Error("非数字不能转换deg");
+        }
+      }
+
+      if (type === "@len"){
+        const a = evaluate(children[0]);
+        const isVecA = Vector2d.is(a);
+        if (isVecA){
+          return Vector2d.length(a);
+        } else {
+          throw new Error("非向量不能计算模");
+        }
+      }
+
+      if (type === "@lens"){
+        const a = evaluate(children[0]);
+        const isVecA = Vector2d.is(a);
+        if (isVecA){
+          return Vector2d.lengthSquared(a);
+        } else {
+          throw new Error("非向量不能计算模平方");
+        }
+      }
+      
+    }
+
+    
+  </script>
+</body>
+
+</html>
