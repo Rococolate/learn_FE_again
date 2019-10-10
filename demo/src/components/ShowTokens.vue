@@ -66,11 +66,12 @@ export default {
     to{opacity:1}
   }
   .fade-in{
-    animation: fade-in 2s linear 0s;
+    animation: fade-in 0.2s linear 0s;
   }
   .show-tokens{
     font-size: 32px;
     margin-top: 60px;
+    height: 1em;
   }
   .number{
     min-width: 0.8em;

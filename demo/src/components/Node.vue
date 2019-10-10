@@ -1,5 +1,5 @@
 <template>
-  <div class="node fade-in" :class="node.name ? node.name : `literal`">
+  <div class="node fade-in" :class="className">
     <span>{{text}}</span>
     <div class="children" v-if="node.children && node.children.length > 0">
       <Node v-for="(item,index) in node.children" :key="item.id ? item.id : item" :node="item" :style="rotate(index,node.children.length)"></Node>
@@ -8,7 +8,6 @@
 </template>
 
 <script>
-import Node from "./Node.vue";
 const BASE_DEG = 10;
 export default {
   name: 'Node',
@@ -21,6 +20,12 @@ export default {
   computed:{
     level:_vm => _vm.deep(),
     text:_vm => _vm.node.type ? _vm.shortName(_vm.node.type) : _vm.node,
+    className: _vm => {
+      return {
+        "literal":!_vm.node.name,
+        [_vm.node.name]:_vm.node && _vm.node.name,
+      }
+    }
   },
   data(){
     return {

@@ -13,11 +13,11 @@
 
 <script>
 import Node from "./Node.vue";
-import { TOKEN_TYPE } from "../js/type.js";
 import { CLEAR } from "../js/const.js";
-import {  EOF, Parser } from "../js/ast.js";
+import {  Parser } from "../js/ast.js";
 import { CreateTypeNode, operatorValue, opposite, isFullNode, isNotFullNode, isNoChildrenNode, typeValue } from "../js/node.js";
 import { wait } from "../js/wait.js";
+const SLEEP_TIME = 200;
 export default {
   name: 'ShowAst',
   components: {
@@ -40,7 +40,7 @@ export default {
   watch:{
     input(newArray){
       let _array = [...newArray];
-      console.log(JSON.stringify(_array));
+      // console.log(JSON.stringify(_array));
       
       if (_array[0] === CLEAR) return this.clear();
       while(_array.length > 0){
@@ -65,14 +65,13 @@ export default {
 
       const rob = async(type,children) =>{
         console.log("rob");
-        await wait(1000);
+        await wait(SLEEP_TIME);
         const child = children.pop();
         this.stack.push(CreateTypeNode(type)(child));
       }
 
       const retire = async(type) => {
         console.log("retire");
-        await wait(1000);
         this.stack.push(CreateTypeNode(type)(this.stack.pop()));
       }
 
@@ -83,7 +82,7 @@ export default {
         // console.log(typeValue(stack[stack.length -2]),typeValue(stack[stack.length -1]),value);
         while(isFullNode(this.stack[this.stack.length -1]) &&  isNotFullNode(this.stack[this.stack.length - 2]) && (value <= typeValue(this.stack[this.stack.length -1])) && (value <= typeValue(this.stack[this.stack.length -2])) ) {
           // console.log(value);
-          await wait(1000);
+          await wait(SLEEP_TIME);
           this.stack[this.stack.length - 2].children.push(this.stack.pop());
         }
       }
@@ -93,7 +92,7 @@ export default {
         await link(type);
         //  找到最近的( 其余push到tempStack
         while(this.stack.length > 0 && !(this.stack[this.stack.length - 1].type === type && this.stack[this.stack.length - 1].maxChildren === 0)){
-          await wait(1000);
+          await wait(SLEEP_TIME);
           this.tempStack.push(this.stack.pop());
         }
         // 修改最近的( 
@@ -103,7 +102,7 @@ export default {
           // top.children = [];
           // tempStack的Node压给(
           while(this.tempStack.length > 0){
-            await wait(1000);
+            await wait(SLEEP_TIME);
             top.children.push(this.tempStack.pop());
           }
           top.maxChildren = top.children.length;
@@ -111,12 +110,12 @@ export default {
       }
 
       const stackPush = async(node) => {
-        await wait(1000);
+        await wait(SLEEP_TIME);
         this.stack.push(node);
       }
 
       const topChildPush = async(node) => {
-        await wait(1000);
+        await wait(SLEEP_TIME);
         top.children.push(node);
       }
 
@@ -131,7 +130,7 @@ export default {
         if (this.VecNodeSize > 0) throw new Error("还有没有闭合的[");
         // EOF
         return remove("ROOT");
-      };
+      }
 
       if (token.value === "[" ) {
         // 1[
@@ -149,7 +148,7 @@ export default {
         if (isNoChildrenNode(top)) throw new Error(",不能接在空符后面");
         // [ 1 + ,
         if (isNotFullNode(top)) throw new Error(",不能接在非满项后面");
-        link("[")
+        await link("[");
         return stackPush(CreateTypeNode(",")());
       }
 
@@ -194,7 +193,7 @@ export default {
             } else {
               //  1 +
               //  1 + 2 + 
-              link(token.value);
+              await link(token.value);
               return retire(token.value);
             }
         }
@@ -210,7 +209,7 @@ export default {
           if (token.value === "+") return ; // + 号静默
           throw new Error(token.value + "符号不能前置");
         }
-        
+
       }
 
       if (token.type === "NUMBER") {
@@ -249,6 +248,7 @@ export default {
   }
   .stack{
     flex:1;
+    position: relative;
   }
   .stack > .node {
     margin:0 2em;
